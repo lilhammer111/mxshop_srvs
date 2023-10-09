@@ -18,17 +18,17 @@ func (GoodsServer) BannerList(c context.Context, empty *emptypb.Empty) (*proto.B
 	result := global.DB.Find(&banners)
 	bannerListResponse.Total = int32(result.RowsAffected)
 
-	var bannerReponses []*proto.BannerResponse
+	var bannerResponses []*proto.BannerResponse
 	for _, banner := range banners {
-		bannerReponses = append(bannerReponses, &proto.BannerResponse{
+		bannerResponses = append(bannerResponses, &proto.BannerResponse{
 			Id:    banner.ID,
 			Image: banner.Image,
 			Index: banner.Index,
-			Url:   banner.URL,
+			Url:   banner.Url,
 		})
 	}
 
-	bannerListResponse.Data = bannerReponses
+	bannerListResponse.Data = bannerResponses
 
 	return &bannerListResponse, nil
 }
@@ -38,7 +38,7 @@ func (GoodsServer) CreateBanner(c context.Context, r *proto.BannerRequest) (*pro
 
 	banner.Image = r.Image
 	banner.Index = r.Index
-	banner.URL = r.Url
+	banner.Url = r.Url
 
 	global.DB.Save(&banner)
 
@@ -60,7 +60,7 @@ func (GoodsServer) UpdateBanner(c context.Context, r *proto.BannerRequest) (*emp
 	}
 
 	if r.Url != "" {
-		banner.URL = r.Url
+		banner.Url = r.Url
 	}
 	if r.Image != "" {
 		banner.Image = r.Image

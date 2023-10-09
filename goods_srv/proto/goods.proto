@@ -98,6 +98,7 @@ message CategoryBrandRequest{
   int32 categoryId = 2;
   int32 brandId = 3;
 }
+
 message CategoryBrandResponse{
   int32 id = 1;
   BrandInfoResponse brand = 2;
@@ -150,12 +151,9 @@ message CategoryBrandListResponse {
   repeated CategoryBrandResponse data = 2;
 }
 
-
-
 message BatchGoodsIdInfo {
   repeated int32 id = 1;
 }
-
 
 message DeleteGoodsInfo {
   int32 id = 1;
@@ -218,7 +216,6 @@ message GoodsFilterRequest  {
   string keyWords = 9;
   int32 brand = 10;
 }
-
 
 message GoodsInfoResponse {
   int32 id = 1;

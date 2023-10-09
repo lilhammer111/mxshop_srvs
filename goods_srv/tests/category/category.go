@@ -6,6 +6,7 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
 	"mxshop_srvs/goods_srv/proto"
+	"os"
 )
 
 var brandClient proto.GoodsClient
@@ -17,12 +18,15 @@ func TestGetCategoryList() {
 		panic(err)
 	}
 	fmt.Println(rsp.Total)
-	fmt.Println(rsp.JsonData)
+	//fmt.Println(rsp.JsonData)
+	f, _ := os.OpenFile("goods_srv/tests/category/test.json", os.O_CREATE|os.O_RDWR, 0755)
+	_, _ = fmt.Fprintln(f, rsp.JsonData)
+
 }
 
 func TestGetSubCategoryList() {
 	rsp, err := brandClient.GetSubCategory(context.Background(), &proto.CategoryListRequest{
-		Id: 135487,
+		Id: 130358,
 	})
 	if err != nil {
 		panic(err)
@@ -42,8 +46,8 @@ func Init() {
 func main() {
 	Init()
 	//TestCreateUser()
-	//TestGetSubCategoryList()
-	TestGetCategoryList()
+	TestGetSubCategoryList()
+	//TestGetCategoryList()
 
 	conn.Close()
 }

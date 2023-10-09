@@ -11,7 +11,7 @@ import (
 )
 
 func (GoodsServer) BrandList(c context.Context, request *proto.BrandFilterRequest) (*proto.BrandListResponse, error) {
-	var brands []model.Brand
+	var brands []model.Brands
 	var brandListRsp proto.BrandListResponse
 	res := global.DB.Scopes(Paginate(int(request.Pages), int(request.PagePerNums))).Find(&brands)
 	if res.Error != nil {
@@ -19,29 +19,29 @@ func (GoodsServer) BrandList(c context.Context, request *proto.BrandFilterReques
 	}
 
 	var total int64
-	global.DB.Model(&model.Brand{}).Count(&total)
+	global.DB.Model(&model.Brands{}).Count(&total)
 	brandListRsp.Total = int32(total)
 
 	//fmt.Println(res.RowsAffected)
-	var brandRsps []*proto.BrandInfoResponse
+	var brandResponses []*proto.BrandInfoResponse
 	for _, brand := range brands {
-		brandRsps = append(brandRsps, &proto.BrandInfoResponse{
+		brandResponses = append(brandResponses, &proto.BrandInfoResponse{
 			Id:   brand.ID,
 			Name: brand.Name,
 			Logo: brand.Logo,
 		})
 	}
-	brandListRsp.Data = brandRsps
+	brandListRsp.Data = brandResponses
 	return &brandListRsp, nil
 }
 
 func (GoodsServer) CreateBrand(c context.Context, r *proto.BrandRequest) (*proto.BrandInfoResponse, error) {
 
-	if res := global.DB.First(&model.Brand{}); res.RowsAffected == 1 {
+	if res := global.DB.First(&model.Brands{}); res.RowsAffected == 1 {
 		return nil, status.Error(codes.InvalidArgument, "品牌已存在")
 	}
 
-	brand := model.Brand{Logo: r.Logo, Name: r.Name}
+	brand := model.Brands{Logo: r.Logo, Name: r.Name}
 
 	if res := global.DB.Save(&brand); res.Error != nil {
 		return nil, status.Error(codes.Internal, "内部错误")
@@ -55,7 +55,7 @@ func (GoodsServer) CreateBrand(c context.Context, r *proto.BrandRequest) (*proto
 }
 
 func (GoodsServer) DeleteBrand(c context.Context, r *proto.BrandRequest) (*emptypb.Empty, error) {
-	if res := global.DB.Delete(&model.Brand{}, r.Id); res.RowsAffected == 0 {
+	if res := global.DB.Delete(&model.Brands{}, r.Id); res.RowsAffected == 0 {
 		return nil, status.Error(codes.NotFound, "品牌不存在")
 	}
 
@@ -63,7 +63,7 @@ func (GoodsServer) DeleteBrand(c context.Context, r *proto.BrandRequest) (*empty
 }
 
 func (GoodsServer) UpdateBrand(c context.Context, r *proto.BrandRequest) (*emptypb.Empty, error) {
-	brand := model.Brand{}
+	brand := model.Brands{}
 
 	if res := global.DB.Delete(&brand, r.Id); res.RowsAffected == 0 {
 		return nil, status.Error(codes.NotFound, "品牌不存在")
@@ -82,5 +82,4 @@ func (GoodsServer) UpdateBrand(c context.Context, r *proto.BrandRequest) (*empty
 	}
 
 	return &emptypb.Empty{}, nil
-
 }

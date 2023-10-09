@@ -10,10 +10,10 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"log"
-	"mxshop_srvs/goods_srv/global"
-	"mxshop_srvs/goods_srv/handler"
-	"mxshop_srvs/goods_srv/initialize"
-	"mxshop_srvs/goods_srv/proto"
+	"mxshop_srvs/user_srv/global"
+	"mxshop_srvs/user_srv/handler"
+	"mxshop_srvs/user_srv/initialize"
+	"mxshop_srvs/user_srv/proto"
 	util "mxshop_srvs/user_srv/utils"
 	"net"
 	"os"
@@ -23,7 +23,7 @@ import (
 
 func main() {
 	IP := flag.String("i", "0.0.0.0", "ip地址")
-	Port := flag.Int("p", 50051, "端口号")
+	Port := flag.Int("p", 0, "端口号")
 	flag.Parse()
 
 	// 初始化配置
@@ -44,7 +44,7 @@ func main() {
 	zap.S().Info("port: ", *Port)
 
 	server := grpc.NewServer()
-	proto.RegisterGoodsServer(server, &handler.GoodsServer{})
+	proto.RegisterUserServer(server, &handler.UserServer{})
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *IP, *Port))
 	if err != nil {
 		log.Fatalln("failed to listen: " + err.Error())
@@ -101,5 +101,5 @@ func main() {
 	if err = client.Agent().ServiceDeregister(serviceID); err != nil {
 		zap.S().Info("注销失败")
 	}
-	zap.S().Info("注销成功")
+	zap.S().Info("注销服务成功")
 }

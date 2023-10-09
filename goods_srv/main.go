@@ -22,8 +22,9 @@ import (
 )
 
 func main() {
-
+	// 要带杠 -i 127.0.0.1 -p 50051
 	IP := flag.String("i", "0.0.0.0", "ip地址")
+	// fix default value as 50051 for testing
 	Port := flag.Int("p", 50051, "端口号")
 	flag.Parse()
 
@@ -32,8 +33,9 @@ func main() {
 
 	initialize.Config()
 
-	initialize.DB()
 	zap.S().Infof("server config is %+v", global.ServerConfig)
+
+	initialize.DB()
 
 	if *Port == 0 {
 		*Port, _ = util.GetFreePort()
