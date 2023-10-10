@@ -8,6 +8,7 @@ type Category struct {
 	SubCategory      []*Category `gorm:"foreignKey:ParentCategoryID;references:ID" json:"sub_category"`
 	Level            int32       `gorm:"type:int;not null;default:1" json:"level"`
 	IsTab            bool        `gorm:"default:false;not null" json:"is_tab"`
+	Url              string      `gorm:"type:varchar(200);not null" json:"url"`
 }
 
 type Brands struct {
@@ -61,4 +62,6 @@ type Goods struct {
 	Images          GormList `gorm:"type:varchar(1000);not null"`
 	DescImages      GormList `gorm:"type:varchar(1000);not null"`
 	GoodsFrontImage string   `gorm:"type:varchar(200);not null"`
+
+	Stocks int32 `gorm:"type:int;not null"`
 }

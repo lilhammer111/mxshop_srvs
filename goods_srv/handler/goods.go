@@ -136,25 +136,30 @@ func (GoodsServer) CreateGoods(c context.Context, info *proto.CreateGoodsInfo) (
 	}
 
 	good := model.Goods{
-		Brands:          brand,
-		BrandsID:        brand.ID,
-		Category:        category,
+		Stocks:          info.Stocks,
 		CategoryID:      category.ID,
+		Category:        category,
+		BrandsID:        brand.ID,
+		Brands:          brand,
+		OnSale:          info.OnSale,
+		ShipFree:        info.ShipFree,
+		IsNew:           info.IsNew,
+		IsHot:           info.IsHot,
 		Name:            info.Name,
 		GoodsSn:         info.GoodsSn,
 		MarketPrice:     info.MarketPrice,
 		ShopPrice:       info.ShopPrice,
 		GoodsBrief:      info.GoodsBrief,
-		ShipFree:        info.ShipFree,
 		Images:          info.Images,
 		DescImages:      info.DescImages,
 		GoodsFrontImage: info.GoodsFrontImage,
-		IsNew:           info.IsNew,
-		IsHot:           info.IsHot,
-		OnSale:          info.OnSale,
 	}
+	// err
+	//if res := global.DB.Preload("Category").Preload("Brands").Create(&good); res.RowsAffected == 0 {
+	//	return nil, status.Errorf(codes.InvalidArgument, "fail to add commodity")
+	//}
 
-	if res := global.DB.Create(&good); res.RowsAffected == 0 {
+	if res := global.DB.Save(&good); res.Error != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "fail to add commodity")
 	}
 	goodsInfoResponse := ModelToResponse(good)

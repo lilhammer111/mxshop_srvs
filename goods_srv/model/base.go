@@ -3,24 +3,19 @@ package model
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"gorm.io/gorm"
 	"time"
 )
 
 type GormList []string
 
-func (g *GormList) Scan(value any) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
-	}
-	return json.Unmarshal(b, g)
+func (g GormList) Value() (driver.Value, error) {
+	return json.Marshal(g)
 }
 
-func (g *GormList) Value() (driver.Value, error) {
-	return json.Marshal(*g)
+// 实现 sql.Scanner 接口，Scan 将 value 扫描至 Jsonb
+func (g *GormList) Scan(value interface{}) error {
+	return json.Unmarshal(value.([]byte), &g)
 }
 
 type BaseModel struct {
