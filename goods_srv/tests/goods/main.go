@@ -12,8 +12,8 @@ var conn *grpc.ClientConn
 
 func TestGetGoodsList() {
 	rsp, err := brandClient.GoodsList(context.Background(), &proto.GoodsFilterRequest{
-		TopCategory: 130361,
-		PriceMin:    90,
+		//TopCategory: 130361,
+		//PriceMin:    90,
 		//KeyWords: "深海速冻",
 	})
 	if err != nil {
@@ -22,6 +22,10 @@ func TestGetGoodsList() {
 	fmt.Println(rsp.Total)
 	for _, good := range rsp.Data {
 		fmt.Println(good.Name, good.ShopPrice)
+		fmt.Println("**********")
+		fmt.Println(good.Category.Name)
+		fmt.Println(good.Brand.Id)
+		fmt.Println("**********")
 	}
 }
 
@@ -62,8 +66,8 @@ func main() {
 	Init()
 	//TestCreateUser()
 	TestGetGoodsList()
-	TestBatchGetGoods()
-	TestGetGoodsDetail()
+	//TestBatchGetGoods()
+	//TestGetGoodsDetail()
 
 	conn.Close()
 }

@@ -18,7 +18,7 @@ func (GoodsServer) CategoryBrandList(c context.Context, r *proto.CategoryBrandFi
 	var total int64
 	global.DB.Model(&model.GoodsCategoryBrand{}).Count(&total)
 	categoryBrandListResponse.Total = int32(total)
-	// if you want to load a foreign key, you must use func Preload() to load the foreign key.
+	// if you want to load a foreign key, you must use func Preload() to load the foreign key firstly.
 	global.DB.Preload("Category").Preload("Brands").Scopes(Paginate(int(r.Pages), int(r.PagePerNums))).Find(&categoryBrands)
 
 	var categoryResponses []*proto.CategoryBrandResponse

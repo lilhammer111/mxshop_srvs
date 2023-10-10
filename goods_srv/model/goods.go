@@ -41,8 +41,9 @@ type Goods struct {
 
 	CategoryID int32 `gorm:"type:int;not null"`
 	Category   Category
-	BrandsID   int32 `gorm:"type:int;not null"`
-	Brands     Brands
+	// it's so sucked, the field of "BrandsID" in table goods is brand_id, which lack of a 's'.
+	BrandsID int32 `gorm:"type:int;not null;column:brand_id"`
+	Brands   Brands
 
 	OnSale   bool `gorm:"default:false;not null"`
 	ShipFree bool `gorm:"default:false;not null"`

@@ -80,11 +80,11 @@ func (GoodsServer) GoodsList(c context.Context, r *proto.GoodsFilterRequest) (*p
 		}
 
 		if category.Level == 1 {
-			subQuery = fmt.Sprintf("select id from category where parent_category_id in (select id from category where parent_category_id = %d)", r.TopCategory)
+			subQuery = fmt.Sprintf("select id from category where parent_category_id in (select id from category where parent_category_id=%d)", r.TopCategory)
 		} else if category.Level == 2 {
-			subQuery = fmt.Sprintf("select id from category where parent_category_id = %d", r.TopCategory)
+			subQuery = fmt.Sprintf("select id from category where parent_category_id=%d", r.TopCategory)
 		} else if category.Level == 3 {
-			subQuery = fmt.Sprintf("select id from category where id = %d", r.TopCategory)
+			subQuery = fmt.Sprintf("select id from category where id =%d", r.TopCategory)
 		}
 		localDB = localDB.Where(fmt.Sprintf("category_id in (%s)", subQuery)).Find(&goods)
 	}
@@ -92,7 +92,8 @@ func (GoodsServer) GoodsList(c context.Context, r *proto.GoodsFilterRequest) (*p
 	var total int64
 	localDB.Count(&total)
 	glr.Total = int32(total)
-	res := localDB.Scopes(Paginate(int(r.Pages), int(r.PagePerNums))).Find(&goods)
+
+	res := localDB.Preload("Brands").Preload("Category").Scopes(Paginate(int(r.Pages), int(r.PagePerNums))).Find(&goods)
 	if res.Error != nil {
 		return nil, res.Error
 	}
