@@ -223,7 +223,7 @@ func (GoodsServer) UpdateGoods(c context.Context, info *proto.CreateGoodsInfo) (
 
 func (GoodsServer) GetGoodsDetail(c context.Context, r *proto.GoodInfoRequest) (*proto.GoodsInfoResponse, error) {
 	var good model.Goods
-	if res := global.DB.First(&good, r.Id); res.RowsAffected == 0 {
+	if res := global.DB.Preload("Category").Preload("Brands").First(&good, r.Id); res.RowsAffected == 0 {
 		return nil, status.Errorf(codes.NotFound, "commodity does not exist")
 	}
 	goodsInfoResponse := ModelToResponse(good)
