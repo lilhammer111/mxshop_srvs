@@ -172,6 +172,7 @@ func (GoodsServer) DeleteGoods(c context.Context, info *proto.DeleteGoodsInfo) (
 	if res := global.DB.Delete(&model.Goods{}, info.Id); res.RowsAffected == 0 {
 		return nil, status.Errorf(codes.NotFound, "commodity does not exist")
 	}
+
 	return &emptypb.Empty{}, nil
 }
 

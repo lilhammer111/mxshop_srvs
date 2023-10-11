@@ -42,7 +42,12 @@ func (GoodsServer) CreateBanner(c context.Context, r *proto.BannerRequest) (*pro
 
 	global.DB.Save(&banner)
 
-	return &proto.BannerResponse{Id: banner.ID}, nil
+	return &proto.BannerResponse{
+		Id:    banner.ID,
+		Image: banner.Image,
+		Index: banner.Index,
+		Url:   banner.Url,
+	}, nil
 }
 
 func (GoodsServer) DeleteBanner(c context.Context, r *proto.BannerRequest) (*emptypb.Empty, error) {
