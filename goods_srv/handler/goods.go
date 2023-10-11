@@ -169,7 +169,7 @@ func (GoodsServer) CreateGoods(c context.Context, info *proto.CreateGoodsInfo) (
 }
 
 func (GoodsServer) DeleteGoods(c context.Context, info *proto.DeleteGoodsInfo) (*emptypb.Empty, error) {
-	if res := global.DB.Delete(&model.Goods{}, info.Id); res.Error != nil {
+	if res := global.DB.Delete(&model.Goods{}, info.Id); res.RowsAffected == 0 {
 		return nil, status.Errorf(codes.NotFound, "commodity does not exist")
 	}
 	return &emptypb.Empty{}, nil
@@ -183,12 +183,12 @@ func (GoodsServer) UpdateGoods(c context.Context, info *proto.CreateGoodsInfo) (
 	}
 
 	var category model.Category
-	if result := global.DB.First(&category, info.CategoryId); result.RowsAffected == 0 {
+	if result := global.DB.First(&category, goods.CategoryID); result.RowsAffected == 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "commodity category does not exist")
 	}
 
 	var brand model.Brands
-	if result := global.DB.First(&brand, info.BrandId); result.RowsAffected == 0 {
+	if result := global.DB.First(&brand, goods.Brands); result.RowsAffected == 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "brand does not exist")
 	}
 
