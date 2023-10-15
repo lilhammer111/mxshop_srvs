@@ -52,7 +52,7 @@ type Goods struct {
 	IsHot    bool `gorm:"default:false;not null"`
 
 	Name            string   `gorm:"type:varchar(50);not null"`
-	GoodsSn         string   `gorm:"type:varchar(50);not null"`
+	GoodsSn         string   `gorm:"type:varchar(50);not null"` // 订单编号
 	ClickNum        int32    `gorm:"type:int;default:0;not null"`
 	SoldNum         int32    `gorm:"type:int;default:0;not null"`
 	FavNum          int32    `gorm:"type:int;default:0;not null"`

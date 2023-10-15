@@ -1,0 +1,7 @@
+host: '127.0.0.1'
+port: 8848
+namespace: '66db00e4-cbbf-4101-90ec-5904033dde62'
+user: 'nacos'
+password: 'nacos'
+dataId: 'order-srv.json'
+group: 'pro'
