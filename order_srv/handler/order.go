@@ -57,7 +57,7 @@ func (o OrderServer) CreateCartItem(ctx context.Context, r *proto.CartItemReques
 func (o OrderServer) UpdateCartItem(ctx context.Context, r *proto.CartItemRequest) (*emptypb.Empty, error) {
 	//
 	var shopCart model.ShoppingCart
-	if res := global.DB.First(&shopCart, r.Id); res.RowsAffected == 0 {
+	if res := global.DB.Where("goods =? and user =?", r.GoodsId, r.UserId).First(&shopCart); res.RowsAffected == 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "shopping cart record does not exist")
 	}
 
@@ -76,7 +76,7 @@ func (o OrderServer) UpdateCartItem(ctx context.Context, r *proto.CartItemReques
 }
 
 func (o OrderServer) DeleteCartItem(ctx context.Context, r *proto.CartItemRequest) (*emptypb.Empty, error) {
-	if res := global.DB.Delete(&model.ShoppingCart{}, r.Id); res.RowsAffected == 0 {
+	if res := global.DB.Where("goods =? and user =?", r.GoodsId, r.UserId).Delete(&model.ShoppingCart{}); res.RowsAffected == 0 {
 		return nil, status.Errorf(codes.NotFound, "shopping cart record does not exist")
 	}
 	return &emptypb.Empty{}, nil
@@ -177,8 +177,13 @@ func (o OrderServer) OrderList(ctx context.Context, r *proto.OrderFilterRequest)
 	var orders []model.OrderInfo
 	rsp := new(proto.OrderListResponse)
 	var total int64
-	global.DB.Where(&model.OrderInfo{User: r.UserId}).Count(&total)
-	rsp.Total = int32(total)
+	if r.UserId == 0 {
+		global.DB.Model(&model.OrderInfo{}).Count(&total)
+		rsp.Total = int32(total)
+	} else {
+		global.DB.Where(&model.OrderInfo{User: r.UserId}).Count(&total)
+		rsp.Total = int32(total)
+	}
 
 	global.DB.Scopes(Paginate(int(r.Pages), int(r.PagePerNums))).Where(&model.OrderInfo{User: r.UserId}).Find(&orders)
 	for _, order := range orders {
@@ -193,6 +198,7 @@ func (o OrderServer) OrderList(ctx context.Context, r *proto.OrderFilterRequest)
 			Address: order.Address,
 			Name:    order.SignerName,
 			Mobile:  order.SignerMobile,
+			AddTime: order.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 	return rsp, nil
