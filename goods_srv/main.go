@@ -37,6 +37,8 @@ func main() {
 
 	initialize.DB()
 
+	initialize.Es()
+
 	if *Port == 0 {
 		*Port, _ = util.GetFreePort()
 	}

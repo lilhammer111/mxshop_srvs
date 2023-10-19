@@ -153,8 +153,8 @@ func (o OrderServer) CreateOrder(ctx context.Context, r *proto.OrderRequest) (*p
 	for _, og := range orderGoods {
 		og.Order = order.ID
 	}
-	// batch insert
 
+	// batch insert
 	if res := tx.CreateInBatches(orderGoods, 100); res.RowsAffected == 0 || tx.Error != nil {
 		tx.Rollback()
 		return nil, status.Errorf(codes.Internal, "failed to create table of 'order_goods'")
