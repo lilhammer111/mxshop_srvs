@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -34,9 +35,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = db.AutoMigrate(&model.Inventory{})
-	if err != nil {
-		log.Fatal(err)
-	}
+	//err = db.AutoMigrate(&model.Inventory{}, &model.StockSellDetail{})
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//od := model.StockSellDetail{
+	//	OrderSn: "imooc-bobby",
+	//	Status:  1,
+	//	Detail:  []model.GoodsDetail{{1, 2}, {2, 6}},
+	//}
+	//db.Create(&od)
 
+	var ssd model.StockSellDetail
+	db.Where(model.StockSellDetail{OrderSn: "imooc-bobby"}).First(&ssd)
+	fmt.Println(ssd.Detail)
 }

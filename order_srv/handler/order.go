@@ -2,6 +2,11 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/apache/rocketmq-client-go/v2"
+	"github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/apache/rocketmq-client-go/v2/producer"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -83,94 +88,53 @@ func (o OrderServer) DeleteCartItem(ctx context.Context, r *proto.CartItemReques
 }
 
 func (o OrderServer) CreateOrder(ctx context.Context, r *proto.OrderRequest) (*proto.OrderInfoResponse, error) {
-	// Attention: Prices of commodities should be queried from the database,so we need to access the commodity service
-	// step1: Checking purchased items from the shopping cart
-	var shoppingCarts []model.ShoppingCart
-	goodsNumsMap := make(map[int32]int32)
-	if res := global.DB.Where(model.ShoppingCart{User: r.UserId, Checked: true}).Find(&shoppingCarts); res.RowsAffected == 0 {
-		return nil, status.Errorf(codes.InvalidArgument, "there are no items that need to be settled")
-	}
-	// step2: Query the price of an item from the database
-	var goodsIds []int32
-
-	for _, shoppingCart := range shoppingCarts {
-		goodsIds = append(goodsIds, shoppingCart.Goods)
-		goodsNumsMap[shoppingCart.Goods] = shoppingCart.Nums
-
-		//goodsInvInfos = append(goodsInvInfos, &proto.GoodsInvInfo{
-		//	GoodsId: shoppingCart.Goods,
-		//	Num:     shoppingCart.Nums,
-		//})
-
-	}
-	goods, err := global.GoodsSrvClient.BatchGetGoods(context.Background(), &proto.BatchGoodsIdInfo{Id: goodsIds})
+	orderListener := OrderListener{}
+	p, err := rocketmq.NewTransactionProducer(
+		&orderListener,
+		producer.WithNameServer([]string{"127.0.0.1:9876"}),
+		producer.WithInstanceName("SELL_PRODUCER"))
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to query goods information in batch")
+		zap.S().Errorf("failed to generate producer because %s", err.Error())
+		return nil, err
 	}
-	var orderAmount float32
-	//var orderGoods []*model.OrderGoods
-	var orderGoods []*model.OrderGoods
-	var goodsInvInfos []*proto.GoodsInvInfo
-
-	for _, g := range goods.Data {
-		orderAmount += g.ShopPrice * float32(goodsNumsMap[g.Id])
-		orderGoods = append(orderGoods, &model.OrderGoods{
-			Goods:      g.Id,
-			GoodsName:  g.Name,
-			GoodsImage: g.GoodsFrontImage,
-			GoodsPrice: g.ShopPrice,
-			Nums:       goodsNumsMap[g.Id],
-		})
-		goodsInvInfos = append(goodsInvInfos, &proto.GoodsInvInfo{
-			GoodsId: g.Id,
-			Num:     goodsNumsMap[g.Id],
-		})
-
-	}
-
-	// step3: Deduct inventory
-	_, err = global.InventorySrvClient.Sell(context.Background(), &proto.SellInfo{GoodsInfo: goodsInvInfos})
+	err = p.Start()
 	if err != nil {
-		return nil, status.Errorf(codes.ResourceExhausted, "failed to deduct inventory")
+		zap.S().Errorf("producer failed to start because %s", err.Error())
+		return nil, err
 	}
-	// step4: Generate order records
-	tx := global.DB.Begin()
+
+	defer func() {
+		err = p.Shutdown()
+		if err != nil {
+			zap.S().Errorf("producer failed to start because %s", err.Error())
+		}
+	}()
+
 	order := model.OrderInfo{
 		OrderSn:      GenerateOrderSn(r.UserId),
-		OrderMount:   orderAmount,
-		PayTime:      nil,
 		Address:      r.Address,
 		SignerName:   r.Name,
 		SignerMobile: r.Mobile,
 		Post:         r.Post,
 		User:         r.UserId,
 	}
+	jsonString, _ := json.Marshal(order)
 
-	if res := tx.Save(&order); res.RowsAffected == 0 {
-		tx.Rollback()
-		return nil, status.Errorf(codes.Internal, "failed to create table of 'order_info'")
-	}
-	for _, og := range orderGoods {
-		og.Order = order.ID
+	_, err = p.SendMessageInTransaction(context.Background(), primitive.NewMessage("order_reback", jsonString))
+	if err != nil {
+		return nil, status.Error(codes.Internal, "rocketMQ producer failed to send msg")
 	}
 
-	// batch insert
-	if res := tx.CreateInBatches(orderGoods, 100); res.RowsAffected == 0 || tx.Error != nil {
-		tx.Rollback()
-		return nil, status.Errorf(codes.Internal, "failed to create table of 'order_goods'")
+	if orderListener.Code != codes.OK {
+		return nil, status.Error(orderListener.Code, orderListener.ErrorMessage)
 	}
 
-	// delete shopping cart
-	if res := tx.Where(model.ShoppingCart{User: r.UserId, Checked: true}).Delete(&model.ShoppingCart{}); res.RowsAffected == 0 {
-		tx.Rollback()
-		return nil, status.Errorf(codes.Internal, "failed to delete ordered items in table of 'shoppingCart'")
-	}
-	tx.Commit()
 	return &proto.OrderInfoResponse{
-		Id:      order.ID,
+		Id:      orderListener.ID,
 		OrderSn: order.OrderSn,
-		Total:   order.OrderMount,
+		Total:   orderListener.OrderAmount,
 	}, nil
+
 }
 
 func (o OrderServer) OrderList(ctx context.Context, r *proto.OrderFilterRequest) (*proto.OrderListResponse, error) {

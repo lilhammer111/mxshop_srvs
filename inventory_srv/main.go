@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/apache/rocketmq-client-go/v2"
+	"github.com/apache/rocketmq-client-go/v2/consumer"
 	"github.com/hashicorp/go-uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -71,9 +73,22 @@ func main() {
 		}
 	}()
 
+	// Listen to the inventory return topic
+	c, _ := rocketmq.NewPushConsumer(
+		consumer.WithNameServer([]string{"127.0.0.1:9876"}),
+		consumer.WithGroupName("mxshop-inventory"))
+
+	if err = c.Subscribe("order_reback", consumer.MessageSelector{}, handler.AutoReback); err != nil {
+		fmt.Println("读取消息失败")
+	}
+	_ = c.Start()
+
 	quit := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+
+	_ = c.Shutdown()
+
 	err = registryClient.DeRegister(serviceID)
 	if err != nil {
 		zap.S().Panic("fail to deregister", err.Error())

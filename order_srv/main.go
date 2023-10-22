@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/apache/rocketmq-client-go/v2"
+	"github.com/apache/rocketmq-client-go/v2/consumer"
 	"github.com/hashicorp/go-uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -55,13 +57,6 @@ func main() {
 		log.Fatalln("failed to listen: " + err.Error())
 	}
 
-	// start service
-	go func() {
-		err = server.Serve(lis)
-		if err != nil {
-			log.Fatalln("failed to start grpc: " + err.Error())
-		}
-	}()
 	// 注册服务健康检查
 	grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 	//服务注册
@@ -72,9 +67,30 @@ func main() {
 		zap.S().Panic("fail to register inventory-srv service", err.Error())
 	}
 
+	// start service
+	go func() {
+		err = server.Serve(lis)
+		if err != nil {
+			log.Fatalln("failed to start grpc: " + err.Error())
+		}
+	}()
+	//监听订单超时topic
+	c, _ := rocketmq.NewPushConsumer(
+		consumer.WithNameServer([]string{"127.0.0.1:9876"}),
+		consumer.WithGroupName("mxshop-order"),
+	)
+
+	if err = c.Subscribe("order_timeout", consumer.MessageSelector{}, handler.OrderTimeout); err != nil {
+		fmt.Println("读取消息失败")
+	}
+	_ = c.Start()
+
 	quit := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+
+	_ = c.Shutdown()
+	
 	err = registryClient.DeRegister(serviceID)
 	if err != nil {
 		zap.S().Panic("fail to deregister", err.Error())
