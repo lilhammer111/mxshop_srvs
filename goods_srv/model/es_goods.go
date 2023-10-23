@@ -10,7 +10,7 @@ type EsGoods struct {
 	IsHot      bool  `json:"is_hot"`
 
 	Name        string  `json:"name"`
-	ClickNum    string  `json:"click_num"`
+	ClickNum    int32   `json:"click_num"`
 	SoldNum     int32   `json:"sold_num"`
 	FavNum      int32   `json:"fav_num"`
 	MarketPrice float32 `json:"market_price"`

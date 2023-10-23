@@ -88,7 +88,8 @@ func (o OrderServer) DeleteCartItem(ctx context.Context, r *proto.CartItemReques
 }
 
 func (o OrderServer) CreateOrder(ctx context.Context, r *proto.OrderRequest) (*proto.OrderInfoResponse, error) {
-	orderListener := OrderListener{}
+
+	orderListener := OrderListener{Ctx: ctx}
 	p, err := rocketmq.NewTransactionProducer(
 		&orderListener,
 		producer.WithNameServer([]string{"127.0.0.1:9876"}),

@@ -25,7 +25,7 @@ func main() {
 	// 要带杠 -i 127.0.0.1 -p 50051
 	IP := flag.String("i", "0.0.0.0", "ip地址")
 	// fix default value as 50051 for testing
-	Port := flag.Int("p", 50054, "端口号")
+	Port := flag.Int("p", 50055, "端口号")
 	flag.Parse()
 
 	// 初始化配置

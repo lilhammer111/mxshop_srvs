@@ -8,6 +8,7 @@ import (
 	"github.com/apache/rocketmq-client-go/v2/consumer"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/apache/rocketmq-client-go/v2/producer"
+	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"mxshop_srvs/order_srv/global"
@@ -21,14 +22,19 @@ type OrderListener struct {
 	ErrorMessage string
 	ID           int32
 	OrderAmount  float32
+	Ctx          context.Context
 }
 
 func (o *OrderListener) ExecuteLocalTransaction(msg *primitive.Message) primitive.LocalTransactionState {
 	var orderInfo model.OrderInfo
 	_ = json.Unmarshal(msg.Body, &orderInfo)
 
+	parentSpan := opentracing.SpanFromContext(o.Ctx)
+
 	// Attention: Prices of commodities should be queried from the database,so we need to access the commodity service
 	// Checking purchased items from the shopping cart
+	shopCartSpan := opentracing.GlobalTracer().StartSpan("select_shopcart", opentracing.ChildOf(parentSpan.Context()))
+
 	var shoppingCarts []model.ShoppingCart
 	goodsNumsMap := make(map[int32]int32)
 	if res := global.DB.Where(model.ShoppingCart{User: orderInfo.User, Checked: true}).Find(&shoppingCarts); res.RowsAffected == 0 {
@@ -37,6 +43,8 @@ func (o *OrderListener) ExecuteLocalTransaction(msg *primitive.Message) primitiv
 		// If an error occurs before inventory has been deducted, then the message should be rolled back
 		return primitive.RollbackMessageState
 	}
+	shopCartSpan.Finish()
+
 	// Query the price of an item from the database
 	var goodsIds []int32
 
@@ -45,12 +53,17 @@ func (o *OrderListener) ExecuteLocalTransaction(msg *primitive.Message) primitiv
 		goodsNumsMap[shoppingCart.Goods] = shoppingCart.Nums
 	}
 
+	queryGoodsSpan := opentracing.GlobalTracer().StartSpan("query_goods", opentracing.ChildOf(parentSpan.Context()))
+
 	goods, err := global.GoodsSrvClient.BatchGetGoods(context.Background(), &proto.BatchGoodsIdInfo{Id: goodsIds})
 	if err != nil {
 		o.Code = codes.Internal
 		o.ErrorMessage = "failed to query goods information in batch"
 		return primitive.RollbackMessageState
 	}
+
+	queryGoodsSpan.Finish()
+
 	var orderAmount float32
 	//var orderGoods []*model.OrderGoods
 	var orderGoods []*model.OrderGoods
@@ -73,6 +86,8 @@ func (o *OrderListener) ExecuteLocalTransaction(msg *primitive.Message) primitiv
 	}
 
 	// Deduct inventory
+	queryInvSpan := opentracing.GlobalTracer().StartSpan("query_inv", opentracing.ChildOf(parentSpan.Context()))
+
 	_, err = global.InventorySrvClient.Sell(context.Background(), &proto.SellInfo{OrderSn: orderInfo.OrderSn, GoodsInfo: goodsInvInfos})
 	if err != nil {
 		//todo 如果是网络问题，err.codes 应该是非internal InvalidArgument 或者ResourceExhausted，需要改写一下sell接口的逻辑
@@ -81,10 +96,13 @@ func (o *OrderListener) ExecuteLocalTransaction(msg *primitive.Message) primitiv
 		return primitive.RollbackMessageState
 		//return nil, status.Errorf(codes.ResourceExhausted, "failed to deduct inventory")
 	}
+	queryInvSpan.Finish()
 
 	// step4: Generate order records
 	tx := global.DB.Begin()
 	orderInfo.OrderMount = orderAmount
+
+	saveOrderSpan := opentracing.GlobalTracer().StartSpan("save_order", opentracing.ChildOf(parentSpan.Context()))
 
 	if res := tx.Save(&orderInfo); res.RowsAffected == 0 {
 		tx.Rollback()
@@ -95,6 +113,8 @@ func (o *OrderListener) ExecuteLocalTransaction(msg *primitive.Message) primitiv
 		return primitive.CommitMessageState
 	}
 
+	saveOrderSpan.Finish()
+
 	o.ID = orderInfo.ID
 	o.OrderAmount = orderInfo.OrderMount
 	for _, og := range orderGoods {
@@ -102,20 +122,26 @@ func (o *OrderListener) ExecuteLocalTransaction(msg *primitive.Message) primitiv
 	}
 
 	// batch insert
+	saveOrderGoodsSpan := opentracing.GlobalTracer().StartSpan("save_order_goods", opentracing.ChildOf(parentSpan.Context()))
+
 	if res := tx.CreateInBatches(orderGoods, 100); res.RowsAffected == 0 || tx.Error != nil {
 		tx.Rollback()
 		o.Code = codes.Internal
 		o.ErrorMessage = "failed to batch create order goods record"
 		return primitive.CommitMessageState
 	}
+	saveOrderGoodsSpan.Finish()
 
 	// delete shopping cart
+	deleteShopCartSpan := opentracing.GlobalTracer().StartSpan("delete_shopcart", opentracing.ChildOf(parentSpan.Context()))
+
 	if res := tx.Where(&model.ShoppingCart{User: orderInfo.User, Checked: true}).Delete(&model.ShoppingCart{}); res.RowsAffected == 0 {
 		tx.Rollback()
 		o.Code = codes.Internal
 		o.ErrorMessage = "failed to delete ordered items in table of 'shoppingCart'"
 		return primitive.CommitMessageState
 	}
+	deleteShopCartSpan.Finish()
 
 	//发送延时消息
 	p, err := rocketmq.NewProducer(
