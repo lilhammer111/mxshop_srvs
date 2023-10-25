@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -20,8 +21,6 @@ import (
 	util "mxshop_srvs/order_srv/utils"
 	"mxshop_srvs/order_srv/utils/otgrpc"
 	"mxshop_srvs/order_srv/utils/register/consul"
-
-	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"net"
 	"os"
 	"os/signal"

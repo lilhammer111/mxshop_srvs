@@ -33,7 +33,7 @@ func main() {
 
 	initialize.Config()
 
-	zap.S().Infof("server config is %+v", global.ServerConfig)
+	//zap.S().Infof("server config is %+v", global.ServerConfig)
 
 	initialize.DB()
 
@@ -60,8 +60,10 @@ func main() {
 
 	//服务注册
 	cfg := capi.DefaultConfig()
-	cfg.Address = fmt.Sprintf("%s:%d", global.ServerConfig.ConsulInfo.Host,
-		global.ServerConfig.ConsulInfo.Port)
+	cfg.Address = fmt.Sprintf("%s:%d",
+		global.ServerConfig.ConsulInfo.Host,
+		global.ServerConfig.ConsulInfo.Port,
+	)
 
 	client, err := capi.NewClient(cfg)
 	if err != nil {
@@ -69,7 +71,8 @@ func main() {
 	}
 	//生成对应的检查对象
 	check := &capi.AgentServiceCheck{
-		GRPC:                           fmt.Sprintf("192.168.1.5:%d", *Port),
+		//GRPC:                           fmt.Sprintf("192.168.1.5:%d", *Port),
+		GRPC:                           fmt.Sprintf("%s:%d", global.ServerConfig.Host, *Port),
 		Timeout:                        "5s",
 		Interval:                       "5s",
 		DeregisterCriticalServiceAfter: "15s",
@@ -84,7 +87,7 @@ func main() {
 	//registration.ID = global.ServerConfig.Name
 	registration.Port = *Port
 	registration.Tags = []string{"imooc", "bobby", "user", "srv"}
-	registration.Address = "192.168.1.5"
+	registration.Address = global.ServerConfig.Host
 	registration.Check = check
 	//1. 如何启动两个服务
 	//2. 即使我能够通过终端启动两个服务，但是注册到consul中的时候也会被覆盖
